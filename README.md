@@ -9,3 +9,5 @@ https://github.com/poteto-go/poteto
 ### middleware
 
 middleware for poteto.
+
+- Sentry
