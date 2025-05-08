@@ -1,0 +1,45 @@
+name: Lint
+
+on:
+  workflow_call:
+    inputs:
+      enable_pr_comment:
+        description: "Enable PR comment"
+        required: false
+        default: true
+        type: "boolean"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Use golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+      - name: Install golanci lint
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.64.5
+      - name: Create comment file
+        if: ${{ inputs.enable_pr_comment == true }}
+        run: |
+          cat  << EOF > comment.md
+          Hello I'm Potetobot : ).
+          Thank you for your contribution.
+          Linting results are as follows (if none, it means no issues were found):
+          \`\`\`xml
+          $(golangci-lint run -c rules/.golangci.yaml)
+          \`\`\`
+          EOF
+      - name: Create PR comment
+        if: ${{ inputs.enable_pr_comment == true }}
+        run: |
+          gh pr comment ${{ github.event.number }} --body-file comment.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

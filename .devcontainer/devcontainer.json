@@ -1,0 +1,28 @@
+{
+  "name": "Go",
+  "dockerFile": "./Dockerfile",
+  "features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {}
+	},
+  "postCreateCommand": "bash .devcontainer/scripts/postCreateCommand.sh",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "christian-kohler.path-intellisense",
+        "streetsidesoftware.code-spell-checker",
+        "oderwat.indent-rainbow",
+        "github.copilot",
+        "google.geminicodeassist"
+      ],
+      "settings": {
+        "editor.tabSize": 2,
+        "editor.formatOnSave": true,
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        }
+      }
+    }
+  }
+}
