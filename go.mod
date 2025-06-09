@@ -4,7 +4,9 @@ go 1.24.1
 
 require (
 	github.com/getsentry/sentry-go v0.32.0
-	github.com/poteto-go/poteto v1.11.0
+	github.com/goccy/go-json v0.10.5
+	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/poteto-go/poteto v1.12.0
 	github.com/stretchr/testify v1.10.0
 )
 
@@ -16,8 +18,8 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
-	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/goccy/go-yaml v1.17.1 // indirect
+	github.com/goccy/go-yaml v1.18.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/harakeishi/gats v0.0.0-20230219034858-055bc915842a // indirect
 	github.com/kr/text v0.2.0 // indirect
