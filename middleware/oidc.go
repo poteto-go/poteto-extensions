@@ -52,7 +52,11 @@ var DefaultOidcConfig = OidcConfig{
 
 // Oidc verify signature by jwks url & set token -> context
 //
-// You can decode with oidc.GoogleOidcClaims
+// # You can decode with oidc.GoogleOidcClaims
+//
+// may return error
+//
+// - https://github.com/poteto-go/poteto-extensions/blob/main/types/perror/oidc_error.go
 //
 //	func main() {
 //	  p := poteto.New()
@@ -161,6 +165,9 @@ func applyVerifyFunc(idToken oidc.IdToken, cfg OidcConfig) error {
 	return nil
 }
 
+// extractBearer from Header
+//
+// if not contains Bearer: `perror.ErrNotIncludeBearerToken`
 func extractBearer(ctx poteto.Context) (string, error) {
 	authHeader := ctx.GetRequest().Header.Get(constant.HeaderAuthorization)
 	target := constant.AuthScheme
