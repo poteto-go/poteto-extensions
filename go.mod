@@ -3,7 +3,7 @@ module github.com/poteto-go/poteto-extensions
 go 1.24.1
 
 require (
-	github.com/getsentry/sentry-go v0.32.0
+	github.com/getsentry/sentry-go v0.33.0
 	github.com/goccy/go-json v0.10.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/poteto-go/poteto v1.12.0
