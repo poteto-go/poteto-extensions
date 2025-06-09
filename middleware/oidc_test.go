@@ -39,9 +39,9 @@ func TestMiddleware_OidcWithConfig(t *testing.T) {
 
 		oidc_handler(ctx)
 
-		assert.Equal(t, claims.Iss, "https://accounts.google.com")
+		assert.Equal(t, "https://accounts.google.com", claims.Iss)
 
-		assert.Equal(t, claims.Email, "test@exmaple.com")
+		assert.Equal(t, "test@exmaple.com", claims.Email)
 	})
 
 	t.Run("invalid token", func(t *testing.T) {

@@ -1,14 +1,14 @@
 package middleware
 
 import (
-	"errors"
 	"strings"
 	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/poteto-go/poteto"
+	"github.com/poteto-go/poteto-extensions/oidc"
+	"github.com/poteto-go/poteto-extensions/types/perror"
 	"github.com/poteto-go/poteto/constant"
-	"github.com/poteto-go/poteto/oidc"
 	"github.com/poteto-go/poteto/utils"
 )
 
@@ -122,7 +122,7 @@ func OidcWithConfig(cfg OidcConfig) poteto.MiddlewareFunc {
 func verifyDecode(token string, cfg OidcConfig) ([]byte, error) {
 	splitToken := strings.Split(token, ".")
 	if len(splitToken) != 3 {
-		return []byte(""), errors.New("invalid token")
+		return []byte(""), perror.ErrInvalidToken
 	}
 
 	idToken := oidc.IdToken{
@@ -140,7 +140,7 @@ func verifyDecode(token string, cfg OidcConfig) ([]byte, error) {
 	// decode payload
 	decodedPayload, err := utils.JwtDecodeSegment(idToken.RawPayload)
 	if err != nil {
-		return []byte(""), err
+		return []byte(""), perror.ErrFailedToDecodeToken
 	}
 
 	return decodedPayload, nil
@@ -166,7 +166,7 @@ func extractBearer(ctx poteto.Context) (string, error) {
 	target := constant.AuthScheme
 	bearers := strings.Split(authHeader, target)
 	if len(bearers) <= 1 {
-		return "", errors.New("not included bearer token")
+		return "", perror.ErrNotIncludeBearerToken
 	}
 	return strings.Trim(bearers[1], " "), nil
 }

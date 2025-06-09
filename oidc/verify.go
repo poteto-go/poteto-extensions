@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/patrickmn/go-cache"
+	"github.com/poteto-go/poteto-extensions/types/perror"
 	"github.com/poteto-go/poteto/utils"
 )
 
@@ -92,12 +93,12 @@ func DefaultVerifyTokenSignature(idToken IdToken, jwksUrl string) error {
 	// decode header
 	byteHeader, err := utils.JwtDecodeSegment(idToken.RawHeader)
 	if err != nil {
-		return err
+		return perror.ErrFailedToDecodeToken
 	}
 
 	header := Header{}
 	if err := json.Unmarshal(byteHeader, &header); err != nil {
-		return err
+		return perror.ErrFailedToUnmarshalToken
 	}
 	// Assign header back to idToken.Header. This was missing before but needed by getJwk.
 	idToken.Header = header
@@ -130,12 +131,12 @@ func DefaultVerifyTokenSignature(idToken IdToken, jwksUrl string) error {
 
 	decSignature, err := utils.JwtUrlDecodeSegment(idToken.RawSignature)
 	if err != nil {
-		return err
+		return perror.ErrFailedToDecodeToken
 	}
 
 	// Assuming ALG is RS256 based on crypto/sha256 usage
 	if err := rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, sha.Sum(nil), decSignature); err != nil {
-		return fmt.Errorf("signature verification failed: %w", err)
+		return perror.ErrFailedToValidateSignature
 	}
 
 	return nil
@@ -144,20 +145,20 @@ func DefaultVerifyTokenSignature(idToken IdToken, jwksUrl string) error {
 func getJwk(token IdToken, jwksUrl string) (jwk, error) {
 	parsedUrl, err := url.Parse(jwksUrl)
 	if err != nil {
-		return jwk{}, fmt.Errorf("failed to parse jwks url: %w", err)
+		return jwk{}, perror.ErrFailedToParseJWKsUrl
 	}
 
 	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	reqWithCtx, err := http.NewRequestWithContext(ctxWithTimeout, http.MethodGet, parsedUrl.String(), nil)
 	if err != nil {
-		return jwk{}, fmt.Errorf("failed to create request of GET JWKs endpoint: %w", err)
+		return jwk{}, perror.ErrFailedToParseJWKsUrl
 	}
 
 	httpClient := &http.Client{}
 	resp, err := httpClient.Do(reqWithCtx)
 	if err != nil {
-		return jwk{}, fmt.Errorf("failed to GET JWKs endpoint: %w", err)
+		return jwk{}, perror.ErrFailedToGetJWKs
 	}
 
 	defer resp.Body.Close()
@@ -165,12 +166,12 @@ func getJwk(token IdToken, jwksUrl string) (jwk, error) {
 
 	keys := &jwks{}
 	if err := json.Unmarshal(byteArray, keys); err != nil {
-		return jwk{}, fmt.Errorf("failed to unmarshal JWKs response: %w", err)
+		return jwk{}, perror.ErrFailedToUnmarshalJWKsResponse
 	}
 
 	foundKey, err := keys.find(token.Header.Kid)
 	if err != nil {
-		return jwk{}, fmt.Errorf("jwks keys not found")
+		return jwk{}, perror.ErrJWKsKeysNotFound
 	}
 
 	return foundKey, nil
@@ -185,7 +186,7 @@ func getExponentialFromKey(e string) (int, error) {
 	// Ensure E is base64url encoded before decoding
 	byteE, err := base64.RawURLEncoding.DecodeString(e)
 	if err != nil {
-		return 0, fmt.Errorf("failed to decode exponent E: %w", err)
+		return 0, perror.ErrFailedToDecodeExponentE
 	}
 
 	return int(new(big.Int).SetBytes(byteE).Int64()), nil

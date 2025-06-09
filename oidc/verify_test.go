@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/patrickmn/go-cache" // Import go-cache
+	"github.com/poteto-go/poteto-extensions/types/perror"
 	"github.com/poteto-go/poteto/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -116,12 +117,12 @@ func TestDefaultVerifyTokenSignature(t *testing.T) {
 
 	// --- Test Cases ---
 	tests := []struct {
-		name        string
-		token       IdToken
-		jwksUrl     string
-		setupServer func() *httptest.Server // Optional server override for specific tests
-		expectError bool
-		errorMsg    string // Optional: check for specific error message part
+		name          string
+		token         IdToken
+		jwksUrl       string
+		setupServer   func() *httptest.Server // Optional server override for specific tests
+		expectError   bool
+		expectedError error // Optional: check for specific error message part
 	}{
 		{
 			name:        "Valid Token and JWKS",
@@ -137,9 +138,9 @@ func TestDefaultVerifyTokenSignature(t *testing.T) {
 				RawSignature: strings.TrimRight(base64.RawURLEncoding.EncodeToString([]byte("invalid")), "="),
 				Header:       validToken.Header,
 			},
-			jwksUrl:     jwksUrl,
-			expectError: true,
-			errorMsg:    "signature verification failed",
+			jwksUrl:       jwksUrl,
+			expectError:   true,
+			expectedError: perror.ErrFailedToValidateSignature,
 		},
 		{
 			name: "Malformed Header Segment",
@@ -149,9 +150,9 @@ func TestDefaultVerifyTokenSignature(t *testing.T) {
 				RawSignature: "not-base64",
 				// Header will be derived from RawHeader, causing unmarshal error later if decode succeeds
 			},
-			jwksUrl:     jwksUrl,
-			expectError: true,
-			errorMsg:    "illegal base64 data", // Error from utils.JwtDecodeSegment
+			jwksUrl:       jwksUrl,
+			expectError:   true,
+			expectedError: perror.ErrFailedToDecodeToken,
 		},
 		{
 			name: "Malformed Signature Segment",
@@ -161,9 +162,9 @@ func TestDefaultVerifyTokenSignature(t *testing.T) {
 				RawSignature: "not-base64",
 				Header:       validToken.Header,
 			},
-			jwksUrl:     jwksUrl,
-			expectError: true,
-			errorMsg:    "illegal base64 data", // Error from utils.JwtDecodeSegment
+			jwksUrl:       jwksUrl,
+			expectError:   true,
+			expectedError: perror.ErrFailedToDecodeToken,
 		},
 		{
 			name:  "JWKS Server Down",
@@ -175,8 +176,8 @@ func TestDefaultVerifyTokenSignature(t *testing.T) {
 				s.Close() // Close the server immediately
 				return s
 			},
-			expectError: true,
-			errorMsg:    "failed to GET JWKs endpoint",
+			expectError:   true,
+			expectedError: perror.ErrFailedToGetJWKs,
 		},
 		{
 			name:  "JWKS Server Returns 500",
@@ -190,7 +191,7 @@ func TestDefaultVerifyTokenSignature(t *testing.T) {
 			// Note: The error might be about unmarshalling empty body or similar,
 			// depending on how the http client handles the 500 before reading body.
 			// Let's check for the unmarshal error which is likely.
-			errorMsg: "failed to unmarshal JWKs response",
+			expectedError: perror.ErrFailedToUnmarshalJWKsResponse,
 		},
 		{
 			name:  "JWKS Server Returns Malformed JSON",
@@ -202,8 +203,8 @@ func TestDefaultVerifyTokenSignature(t *testing.T) {
 					_, _ = w.Write([]byte("{not json}"))
 				}))
 			},
-			expectError: true,
-			errorMsg:    "failed to unmarshal JWKs response",
+			expectError:   true,
+			expectedError: perror.ErrFailedToUnmarshalJWKsResponse,
 		},
 		{
 			name: "Key ID (kid) Not Found in JWKS",
@@ -213,9 +214,9 @@ func TestDefaultVerifyTokenSignature(t *testing.T) {
 				token, _ := createTestJWT(headerWithWrongKid, testPayload, privateKey)
 				return token
 			}(),
-			jwksUrl:     jwksUrl,
-			expectError: true,
-			errorMsg:    "jwks keys not found",
+			jwksUrl:       jwksUrl,
+			expectError:   true,
+			expectedError: perror.ErrJWKsKeysNotFound,
 		},
 	}
 
@@ -245,11 +246,9 @@ func TestDefaultVerifyTokenSignature(t *testing.T) {
 
 			if it.expectError {
 				assert.Error(t, err)
-				if it.errorMsg != "" {
-					assert.Contains(t, err.Error(), it.errorMsg)
-				}
+				assert.ErrorIs(t, err, it.expectedError)
 			} else {
-				assert.NoError(t, err)
+				assert.Nil(t, err)
 			}
 		})
 	}
@@ -394,10 +393,10 @@ func TestCachedVerifyTokenSignature(t *testing.T) {
 
 	// --- Test JWKS Server Errors (Cache should not be populated) ---
 	jwksErrorTests := []struct {
-		name        string
-		setupServer func() *httptest.Server
-		expectError bool
-		errorMsg    string
+		name          string
+		setupServer   func() *httptest.Server
+		expectError   bool
+		expectedError error
 	}{
 		{
 			name: "JWKS Server Down",
@@ -408,8 +407,8 @@ func TestCachedVerifyTokenSignature(t *testing.T) {
 				s.Close() // Close immediately
 				return s
 			},
-			expectError: true,
-			errorMsg:    "failed to GET JWKs endpoint",
+			expectError:   true,
+			expectedError: perror.ErrFailedToGetJWKs,
 		},
 		{
 			name: "JWKS Server Returns 500",
@@ -419,8 +418,8 @@ func TestCachedVerifyTokenSignature(t *testing.T) {
 					w.WriteHeader(http.StatusInternalServerError)
 				}))
 			},
-			expectError: true,
-			errorMsg:    "failed to unmarshal JWKs response", // Likely error due to empty body
+			expectError:   true,
+			expectedError: perror.ErrFailedToUnmarshalJWKsResponse,
 		},
 		{
 			name: "JWKS Server Returns Malformed JSON",
@@ -432,8 +431,8 @@ func TestCachedVerifyTokenSignature(t *testing.T) {
 					_, _ = w.Write([]byte("{not json}"))
 				}))
 			},
-			expectError: true,
-			errorMsg:    "failed to unmarshal JWKs response",
+			expectError:   true,
+			expectedError: perror.ErrFailedToUnmarshalJWKsResponse,
 		},
 	}
 
@@ -452,13 +451,11 @@ func TestCachedVerifyTokenSignature(t *testing.T) {
 
 			if it.expectError {
 				assert.Error(t, err)
-				if it.errorMsg != "" {
-					assert.Contains(t, err.Error(), it.errorMsg)
-				}
+				assert.ErrorIs(t, err, it.expectedError)
 				// Request might have been made depending on the error type
 				// assert.Equal(t, int32(1), atomic.LoadInt32(&requestCount), "JWKS request should be attempted")
 			} else {
-				assert.NoError(t, err)
+				assert.Nil(t, err)
 			}
 
 			// Ensure cache is not populated on JWKS fetch error
@@ -474,7 +471,7 @@ func TestGetExponentialFromKey(t *testing.T) {
 		e             string
 		expectedValue int
 		expectError   bool
-		errorMsg      string
+		expectedError error
 	}{
 		{
 			name:          "Standard Exponent AQAB",
@@ -499,7 +496,7 @@ func TestGetExponentialFromKey(t *testing.T) {
 			e:             "!",
 			expectedValue: 0,
 			expectError:   true,
-			errorMsg:      "failed to decode exponent E: illegal base64 data",
+			expectedError: perror.ErrFailedToDecodeExponentE,
 		},
 	}
 
@@ -510,11 +507,9 @@ func TestGetExponentialFromKey(t *testing.T) {
 			if it.expectError {
 				assert.Error(t, err)
 				assert.Equal(t, it.expectedValue, val) // Should return 0 on error
-				if it.errorMsg != "" {
-					assert.ErrorContains(t, err, it.errorMsg)
-				}
+				assert.ErrorIs(t, it.expectedError, err)
 			} else {
-				assert.NoError(t, err)
+				assert.Nil(t, err)
 				assert.Equal(t, it.expectedValue, val)
 			}
 		})

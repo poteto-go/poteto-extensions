@@ -1,6 +1,8 @@
 package oidc
 
-import "errors"
+import (
+	"github.com/poteto-go/poteto-extensions/types/perror"
+)
 
 var JWKsUrls = map[string]string{
 	"google": "https://www.googleapis.com/oauth2/v3/certs",
@@ -31,6 +33,6 @@ func (keys jwks) find(kid string) (jwk, error) {
 	if foundKey != (jwk{}) {
 		return foundKey, nil
 	} else {
-		return jwk{}, errors.New("jwks keys not found")
+		return jwk{}, perror.ErrJWKsKeysNotFound
 	}
 }
