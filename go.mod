@@ -4,6 +4,7 @@ go 1.24.1
 
 require (
 	github.com/getsentry/sentry-go v0.32.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/poteto-go/poteto v1.10.3
 	github.com/stretchr/testify v1.10.0
 )
